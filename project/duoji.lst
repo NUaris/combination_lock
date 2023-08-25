@@ -1,0 +1,226 @@
+C51 COMPILER V9.54   DUOJI                                                                 12/08/2021 14:10:26 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE DUOJI
+OBJECT MODULE PLACED IN ..\out\duoji.obj
+COMPILER INVOKED BY: D:\arm\mdk5\C51\BIN\C51.EXE ..\source\duoji.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRI
+                    -NT(.\duoji.lst) OBJECT(..\out\duoji.obj)
+
+line level    source
+
+   1          #include"config.h"
+   2          #include"delay.h"
+   3          #include"duoji.h"
+   4          #include"MAIN.h"
+   5          
+   6          //sbit PWM = P3^6;  //设定PWM输出的I/O端口
+   7          unsigned char count = 0, count1 = 0;
+   8          unsigned char timer1 ;
+   9          u8 overDoor = 0, overDoor_Init = 0;
+  10          //对于180°舵机
+  11          //t = 0.5ms——————-舵机会转动 0 °
+  12          //t = 1.0ms——————-舵机会转动 45°
+  13          //t = 1.5ms——————-舵机会转动 90°
+  14          //t = 2.0ms——————-舵机会转动 135°
+  15          //t = 2.5ms——————-舵机会转动180
+  16          
+  17          
+  18          
+  19          
+  20          /*延时程序*/
+  21          void delay1s(void)   //误差 0us
+  22          {
+  23   1          unsigned char a, b, c;
+  24   1      
+  25   1          for(c = 167; c > 0; c--)
+  26   1              for(b = 171; b > 0; b--)
+  27   1                  for(a = 16; a > 0; a--);
+  28   1      
+  29   1          _nop_();  //if Keil,require use intrins.h
+  30   1      }
+  31          
+  32          /*定时器T0初始化*/
+  33          void Timer0_Init()
+  34          {
+  35   1          TMOD &= 0x00;
+  36   1          TMOD = 0x01; //定时器T0设置成方式1
+  37   1      
+  38   1          TH0 = 0xff;   //定时常数 0.1ms 晶振为11.0592MHz
+  39   1          TL0 = 0xa4;
+  40   1      
+  41   1          ET0 = 1;
+  42   1          TR0 = 0;
+  43   1          EA = 1;
+  44   1      }
+  45          
+  46          /*T0中断初始化*/
+  47          //void Time0_Init() interrupt 1
+  48          //{
+  49          //    if(overDoor != 1)
+  50          //    {
+  51          //        TR0 = 0;
+  52          //        TH0 = 0xff; // 0.1ms
+  53          //        TL0 = 0xa4;
+  54          
+C51 COMPILER V9.54   DUOJI                                                                 12/08/2021 14:10:26 PAGE 2   
+
+  55          //        if(count <= timer1) //5==0° 15==90°
+  56          //        {
+  57          //            PWM = 1;
+  58          //        }
+  59          //        else
+  60          //        {
+  61          //            PWM = 0;
+  62          //        }
+  63          
+  64          //        count++;
+  65          
+  66          //        if (count >= 200) //T = 20ms清零
+  67          //        {
+  68          //            count = 0;
+  69          //        }
+  70          
+  71          //        TR0 = 1; //开启T0
+  72          //    }
+  73          //    else
+  74          //    {
+  75          //        TR0 = 0;
+  76          //        TH0 = 0xff; // 0.1ms
+  77          //        TL0 = 0xa4;
+  78          
+  79          //        if(count < 100000) //10s°
+  80          //        {
+  81          //            overDoor_Init = 1;
+  82          //        }
+  83          
+  84          //        count1++;
+  85          
+  86          //        if(count == 100000) //10s°
+  87          //        {
+  88          //            count1 = 0;
+  89          //        }
+  90          
+  91          //        TR0 = 1;
+  92          //    }
+  93          //}
+  94          void Time0_Init() interrupt 1
+  95          {
+  96   1              TR0 = 0;
+  97   1              TH0 = 0xff; // 0.1ms
+  98   1              TL0 = 0xa4;
+  99   1      
+ 100   1              if(count <= timer1) //5==0° 15==90°
+ 101   1              {
+ 102   2                  PWM = 1;
+ 103   2              }
+ 104   1              else
+ 105   1              {
+ 106   2                  PWM = 0;
+ 107   2              }
+ 108   1      
+ 109   1              count++;
+ 110   1      
+ 111   1              if (count >= 200) //T = 20ms清零
+ 112   1              {
+ 113   2                  count = 0;
+ 114   2              }
+ 115   1      
+ 116   1              TR0 = 1; //开启T0
+C51 COMPILER V9.54   DUOJI                                                                 12/08/2021 14:10:26 PAGE 3   
+
+ 117   1          
+ 118   1      }
+ 119          void duoji_on()
+ 120          {
+ 121   1          TH0 = 0xff; // 0.1ms
+ 122   1          TL0 = 0xa4;
+ 123   1      //    ET0 = 1;
+ 124   1          TR0 = 1;
+ 125   1      }
+ 126          
+ 127          void duoji_off()
+ 128          {
+ 129   1          count = 0;
+ 130   1          //ET0 = 0;
+ 131   1          TR0 = 0;
+ 132   1          TH0 = 0xff; // 0.1ms
+ 133   1          TL0 = 0xa4;
+ 134   1      //   count1 = 0;
+ 135   1      }
+ 136          
+ 137          //t = 0.5ms——————-舵机会转动 0 ° angle=5
+ 138          //t = 1.0ms——————-舵机会转动 45° angle=10
+ 139          //t = 1.5ms——————-舵机会转动 90° angle=15
+ 140          //t = 2.0ms——————-舵机会转动 135°angle=20
+ 141          //t = 2.5ms——————-舵机会转动180   angle=25
+ 142          void duoji_start(unsigned char angle)//旋转角度
+ 143          {
+ 144   1          timer1 = angle; //舵机恢复到0°的位置
+ 145   1      //      count=0;//让定时器重新计数
+ 146   1         delay1s();
+ 147   1      }
+ 148          void duoji_Init()
+ 149          {
+ 150   1          count = 0;
+ 151   1          duoji_start(10);
+ 152   1          duoji_on();
+ 153   1          delay1s();
+ 154   1          duoji_off();
+ 155   1          count = 0;
+ 156   1       //   count1 = 0;
+ 157   1          //PWM = 0;
+ 158   1      }
+ 159          
+ 160          void duoji_overDoor()
+ 161          {
+ 162   1          duoji_start(5);
+ 163   1          duoji_on();
+ 164   1          delay1s();
+ 165   1          duoji_off();
+ 166   1      
+ 167   1      }
+ 168          
+ 169          void duoji_openDoor()
+ 170          {
+ 171   1          duoji_start(15);
+ 172   1          duoji_on();
+ 173   1          delay1s();
+ 174   1          duoji_off();
+ 175   1          //overDoor = 1;
+ 176   1          //duoji_overDoor();
+ 177   1      }
+ 178          //void duoji_test()
+C51 COMPILER V9.54   DUOJI                                                                 12/08/2021 14:10:26 PAGE 4   
+
+ 179          //{
+ 180          //    if(overDoor_Init == 1)
+ 181          //    {
+ 182          //        overDoor_Init = 0;
+ 183          //        overDoor = 0;
+ 184          //        TH0 = 0xff; // 0.1ms
+ 185          //        TL0 = 0xa4;
+ 186          //        count1 = 0;
+ 187          //        ET0 = 0;
+ 188          //        TR0 = 0;
+ 189          //        beep();
+ 190          //        delay(200);
+ 191          //        beep();
+ 192          //        delay(200);
+ 193          //        beep();
+ 194          //        duoji_overDoor();
+ 195          //    }
+ 196          //}
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    172    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      5    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

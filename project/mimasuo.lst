@@ -1,0 +1,473 @@
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MIMASUO
+OBJECT MODULE PLACED IN ..\out\mimasuo.obj
+COMPILER INVOKED BY: D:\arm\mdk5\C51\BIN\C51.EXE ..\source\mimasuo.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND P
+                    -RINT(.\mimasuo.lst) OBJECT(..\out\mimasuo.obj)
+
+line level    source
+
+   1          #include"config.h"
+   2          #include"MAIN.h"
+   3          #include"stdio.h"
+   4          #include<string.h>
+   5          /*
+   6          键盘序号说明    键盘功能定义
+   7             0  1  2  3    1  2  3   a:   
+   8             4  5  6  7    4  5  6   b:
+   9             8  9 10 11    7  8  9   c: 
+  10            12 13 14 15    up 0 down d:
+  11          */
+  12          
+  13          INT8U states=0;//状态机
+  14          
+  15          INT8U Card_type[2],     //卡片类型
+  16                Card_SN[4]={0},//IC卡号
+  17                    Card_SN_BUF[4]={0xff,0xff,0xff,0xff},//卡号登记缓冲区    
+  18                    KEY_BUF[8]={'0','0','0','0','0','0','0','0'},
+  19                ID_ASC_buf[9]="0";
+  20          
+  21          INT8U bPass = 0, bWarn = 0;     
+  22          
+  23          void init_all(void)     //初始化
+  24          {
+  25   1              EA = 0;       //关总中断                 
+  26   1          Timer0_Init();
+  27   1          PX0=1;
+  28   1              init_rc522(); //RC522初始化     
+  29   1              Init_LCD1602();   //LCD初始化   
+  30   1              EEPROM_READ(0,Card_SN_BUF,4);//EEPROM初始化,取出记录的卡号
+  31   1          delay(20);
+  32   1              EEPROM_READ(7,KEY_BUF,8);//EEPROM初始化,取出记录的密码 
+  33   1          UART1_Init();
+  34   1              EA = 1;           //开总中断
+  35   1          SYN_FrameInfo(2, "[v5][t5]欢迎使用密码锁");
+  36   1      }      
+  37          
+  38          
+  39          void pass( void )
+  40          {
+  41   1         beep();
+  42   1         Delay_ms(500);//让卡片离开
+  43   1         //LED_BLINK_1();
+  44   1      }
+  45          
+  46          void warn(void)
+  47          {
+  48   1        //LED_BLINK_2();
+  49   1          beep();
+  50   1          delay(100);
+  51   1          beep();
+  52   1      }
+  53          
+  54          uchar key_scan()        //带返回值的子函数
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 2   
+
+  55          {
+  56   1          uchar KeyValue=16;
+  57   1          
+  58   1              P1 = 0xf0;//判断哪一列被按下
+  59   1              if(P1 != 0xf0)
+  60   1              {
+  61   2                      delay(5);//软件消抖
+  62   2                      if( P1 != 0xf0)
+  63   2                      {
+  64   3                              switch(P1)
+  65   3                              {
+  66   4                                      case 0xe0:      KeyValue = 0;   break;
+  67   4                                      case 0xd0:      KeyValue = 1;   break;
+  68   4                                      case 0xb0:      KeyValue = 2;   break;
+  69   4                                      case 0x70:      KeyValue = 3;   break;
+  70   4                              }
+  71   3                              P1 = 0x0f;//判断哪一行被按下
+  72   3                              switch(P1)
+  73   3                              {
+  74   4                                      case 0x0e:      KeyValue = KeyValue;    break;
+  75   4                                      case 0x0d:      KeyValue += 4;  break;
+  76   4                                      case 0x0b:      KeyValue += 8;  break;
+  77   4                                      case 0x07:      KeyValue += 12; break;
+  78   4                              }
+  79   3                              while(P1 != 0x0f);//松手检测
+  80   3                      }                       
+  81   2              }
+  82   1      
+  83   1              
+  84   1          return KeyValue;
+  85   1      }
+  86          
+  87          INT8U IC_READ( void )
+  88          {
+  89   1          INT8U ID_ASC[8],i;
+  90   1              if( PcdRequest( PICC_REQIDL, Card_type ) != MI_OK )//寻天线区内未进入休眠状态的卡，返回卡片类型 2字节   
+  91   1              {
+  92   2                      if( PcdRequest( PICC_REQIDL, Card_type ) != MI_OK )//寻天线区内未进入休眠状态的卡，返回卡片类型 2字节   
+  93   2                      {
+  94   3                         //LCD1602_Dis_Str(0, 1, "id:");
+  95   3                              return FALSE;
+  96   3                      }       
+  97   2              }
+  98   1              //LCD1602_Dis_Str(0, 1, "id:");
+  99   1              if( PcdAnticoll( Card_SN ) != MI_OK ) //防冲撞，返回卡的序列号 4字节 
+ 100   1              {
+ 101   2      
+ 102   2                      bWarn = 1;
+ 103   2                      return FALSE;   
+ 104   2              }
+ 105   1      
+ 106   1              bPass = 1;
+ 107   1              //send_bytes(Card_type,2);
+ 108   1              //send_bytes(Card_SN,4);
+ 109   1              
+ 110   1              for(i=0;i<4;i++) //卡ID号转化成ASCII
+ 111   1              {
+ 112   2                if(Card_SN[i]/16>9)   ID_ASC[i*2]=Card_SN[i]/16+'7';
+ 113   2                  else ID_ASC[i*2]=Card_SN[i]/16+'0';
+ 114   2      
+ 115   2            if(Card_SN[i]%16>9)       ID_ASC[i*2+1]=Card_SN[i]%16+'7';
+ 116   2                  else ID_ASC[i*2+1]=Card_SN[i]%16+'0';
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 3   
+
+ 117   2              }
+ 118   1              //display2(3,0,"ID: ",4); //显示卡号
+ 119   1              //display2(3,2,ID_ASC,8);
+ 120   1          //strcpy(ID_ASC_buf,ID_ASC);
+ 121   1          LCD1602_Dis_Str(0, 1, "id:");
+ 122   1          LCD1602_Dis_Str(3, 1, ID_ASC );
+ 123   1          delay(1000);
+ 124   1          LCD1602_Dis_Str(0, 1, "                    " );
+ 125   1      //    if( !strcmp(ID_ASC,ID_ASC_buf) )
+ 126   1      //            LCD1602_Dis_Str(0, 0, "success");
+ 127   1          
+ 128   1              return TRUE;
+ 129   1      }
+ 130          
+ 131          unsigned char val2func(unsigned char key_value)
+ 132          {   
+ 133   1          uchar func_value=0;
+ 134   1          switch(key_value)
+ 135   1          {
+ 136   2              case 0:func_value=1;break;
+ 137   2              case 1:func_value=2;break;
+ 138   2              case 2:func_value=3;break;
+ 139   2              case 4:func_value=4;break;
+ 140   2              case 5:func_value=5;break;
+ 141   2              case 6:func_value=6;break;
+ 142   2              case 8:func_value=7;break;
+ 143   2              case 9:func_value=8;break;
+ 144   2              case 10:func_value=9;break;
+ 145   2              case 13:func_value=0;break;
+ 146   2          }
+ 147   1          return func_value;
+ 148   1      }
+ 149          
+ 150          void ctrl_process( void )
+ 151          {                 
+ 152   1         INT8U i,key_count,key_value=16,table[8]="--------",statesbuf,table_buf[8]="--------";
+ 153   1         bit ok_flag=0,dj_flag=0;
+ 154   1              if(states!=statesbuf)  //状态改变，清屏
+ 155   1              {
+ 156   2              LCD1602_Clear_Screen();
+ 157   2                      statesbuf=states;
+ 158   2              }
+ 159   1          switch(states)
+ 160   1              {
+ 161   2             case 0:            //IC卡读卡输入
+ 162   2                                LCD1602_Dis_OneChar( 0, 0, '0');
+ 163   2                    LCD1602_Dis_Str( 1, 0, " IDCARD       ");
+ 164   2                            if(IC_READ()) 
+ 165   2                                {
+ 166   3                                 
+ 167   3                      if ((Card_SN[0]==Card_SN_BUF[0])
+ 168   3                                    &&(Card_SN[1]==Card_SN_BUF[1])
+ 169   3                                        &&(Card_SN[2]==Card_SN_BUF[2])
+ 170   3                                        &&(Card_SN[3]==Card_SN_BUF[3]))
+ 171   3                                        {
+ 172   4                          bPass=1;
+ 173   4                          dj_flag=1;
+ 174   4                          states=2;
+ 175   4                          SYN_FrameInfo(2, "[v5][t5]卡片验证成功");
+ 176   4                                              //relay_ON();//灯开关
+ 177   4                                              //display(2,0,5);
+ 178   4                          LCD1602_Dis_Str( 0, 1, "success      ");
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 4   
+
+ 179   4                          delay(1000);
+ 180   4                          //LCD1602_Dis_Str( 0, 1, "                  ");
+ 181   4                                    }
+ 182   3                                        else   //display(2,0,6);
+ 183   3                        {
+ 184   4                          bWarn=1;
+ 185   4                          LCD1602_Dis_Str( 0, 1, "error       ");
+ 186   4                          SYN_FrameInfo(2, "[v5][t5]卡片验证失败");  
+ 187   4                          delay(1000);
+ 188   4                          //LCD1602_Dis_Str( 0, 1, "                  ");
+ 189   4                        }
+ 190   3                                          //relay_OFF();
+ 191   3                        
+ 192   3                                 }
+ 193   2                              
+ 194   2                                break;
+ 195   2      
+ 196   2              case 1:         
+ 197   2                             LCD1602_Dis_OneChar( 0, 0, '1');
+ 198   2                                 //display2(3,0,table,8);
+ 199   2                     LCD1602_Dis_Str( 1, 0, " passdword      ");
+ 200   2                                 key_count=0;
+ 201   2                     while(1)
+ 202   2                                 {  
+ 203   3                                    key_value=key_scan();       
+ 204   3                                        if(key_value==12) 
+ 205   3                                         { 
+ 206   4                                           states--;
+ 207   4                               return;
+ 208   4                                              }
+ 209   3      
+ 210   3                                        if(key_value==14)
+ 211   3                                        {
+ 212   4                                         states++;
+ 213   4                                         return;
+ 214   4                                        }                              
+ 215   3                                        if((key_value>=0 && key_value <3)||(key_value>=4 && key_value <7)||(key_value>=8 && key_value <11)||
+             -key_value==13)//有按键输入
+ 216   3                                        {     
+ 217   4                          if(key_count<=7)
+ 218   4                          {    
+ 219   5                              table[key_count]=val2func(key_value)+'0';
+ 220   5                              table_buf[key_count++]='*';
+ 221   5                          }   
+ 222   4                                              //display2(3,0,table,8);
+ 223   4                          LCD1602_Dis_Str( 0, 1, table_buf);
+ 224   4                          LCD1602_Dis_Str( 8, 1, "     ");    
+ 225   4                                        }
+ 226   3                                        
+ 227   3                                        if(key_value==11)//退格
+ 228   3                                        {
+ 229   4                          if(key_count>0)
+ 230   4                          {
+ 231   5                              --key_count;
+ 232   5                              table[key_count]='-';
+ 233   5                              table_buf[key_count]='-';
+ 234   5                          }   
+ 235   4                                              //display2(3,0,table,8);
+ 236   4                          LCD1602_Dis_Str( 0, 1, table_buf);
+ 237   4                          LCD1602_Dis_Str( 8, 1, "     ");
+ 238   4                                        }
+ 239   3                        if(key_value==3)
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 5   
+
+ 240   3                        {
+ 241   4                          ok_flag=1;
+ 242   4                        }
+ 243   3                                        if(key_count==8&&ok_flag==1)
+ 244   3                                        {
+ 245   4                            ok_flag=0;
+ 246   4                                           if( table[0]==KEY_BUF[0] &&
+ 247   4                                                   table[1]==KEY_BUF[1] &&
+ 248   4                                                       table[2]==KEY_BUF[2] &&
+ 249   4                                                       table[3]==KEY_BUF[3] &&
+ 250   4                                                       table[4]==KEY_BUF[4] &&
+ 251   4                                                       table[5]==KEY_BUF[5] &&
+ 252   4                                                       table[6]==KEY_BUF[6] &&
+ 253   4                                                       table[7]==KEY_BUF[7] )   //密吗正确 
+ 254   4                                      
+ 255   4                                           { 
+ 256   5                                                 bPass=1;
+ 257   5                             dj_flag=1;
+ 258   5                             states=2;
+ 259   5                             SYN_FrameInfo(2, "[v5][t5]密码正确 ");  
+ 260   5                                                 //relay_ON();//灯开关
+ 261   5                             LCD1602_Dis_Str( 0, 1, "                  "); 
+ 262   5                             LCD1602_Dis_Str( 0, 1, "success           `");
+ 263   5                             delay(1000);
+ 264   5                             LCD1602_Dis_Str( 0, 1, "                  ");
+ 265   5                                                 //relay_OFF();
+ 266   5                                                 break;                                 
+ 267   5                                              
+ 268   5                                               }
+ 269   4                                                else   //密码错误
+ 270   4                                                {     
+ 271   5                                                  //relay_OFF();
+ 272   5                                                      beep();
+ 273   5                                                      bWarn=1;
+ 274   5                                                  //display(2,0,6);
+ 275   5                              SYN_FrameInfo(2, "[v5][t5]密码错误");  
+ 276   5                              LCD1602_Dis_Str( 0, 1, "                  "); 
+ 277   5                              LCD1602_Dis_Str( 0, 1, "error");
+ 278   5                              delay(1000);
+ 279   5                              LCD1602_Dis_Str( 0, 1, "                  ");
+ 280   5                                                      break;
+ 281   5                                               }                                      
+ 282   4                                        }
+ 283   3                        else
+ 284   3                        {
+ 285   4                          ok_flag=0;
+ 286   4                        }
+ 287   3      
+ 288   3                                 }
+ 289   2                             break ;
+ 290   2                        
+ 291   2                       case 2:                
+ 292   2                             //display(1,0,3);      //IC卡登记
+ 293   2                             LCD1602_Dis_OneChar( 0, 0, '2');
+ 294   2                     LCD1602_Dis_Str( 1, 0, " set idcard    ");
+ 295   2                         if(IC_READ())  
+ 296   2                                 {
+ 297   3                                               
+ 298   3                                  for(i=0;i<4;i++)
+ 299   3                                  Card_SN_BUF[i] = Card_SN[i];
+ 300   3                      LCD1602_Dis_Str( 0, 1, "loading.....    ");
+ 301   3                                      EEPROM_WRITE(0,Card_SN_BUF,4);//写入EEPROM
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 6   
+
+ 302   3                      delay(200);   
+ 303   3                      LCD1602_Dis_Str( 0, 1, "ok              ");
+ 304   3                      SYN_FrameInfo(2, "[v5][t5]卡片已更新");   
+ 305   3                      delay(2000);
+ 306   3                      LCD1602_Dis_Str( 0, 1, "             ");
+ 307   3                                 }
+ 308   2                             break ;
+ 309   2      
+ 310   2                       case 3:                
+ 311   2      //                     display(1,0,4);      //密码设置
+ 312   2      //                         display2(3,0,table,8);
+ 313   2                     LCD1602_Dis_OneChar( 0, 0, '3');
+ 314   2                     LCD1602_Dis_Str( 1, 0, " set passdword    ");
+ 315   2                                 key_count=0;
+ 316   2                                 while(1)
+ 317   2                                 {  
+ 318   3                                    key_value=key_scan();       
+ 319   3                                        if(key_value==12) 
+ 320   3                                         { 
+ 321   4                                           states--;
+ 322   4                               return;
+ 323   4                                              }
+ 324   3                               
+ 325   3                                    if((key_value>=0 && key_value <3)||(key_value>=4 && key_value <7)||(key_value>=8 && key_value <11
+             -)||key_value==13)//有按键输入
+ 326   3                                        {                                                                                 
+ 327   4                                              table[key_count++]=val2func(key_value)+'0';
+ 328   4                                              //display2(3,0,table,8);
+ 329   4                          LCD1602_Dis_Str( 0, 1, table);
+ 330   4                          LCD1602_Dis_Str( 8, 1, "        "); 
+ 331   4                                        }
+ 332   3                                        
+ 333   3                                        if(key_value==11)//退格
+ 334   3                                        {                                                                 
+ 335   4                                              table[--key_count]='-';
+ 336   4                                              //display2(3,0,table,8);
+ 337   4                          LCD1602_Dis_Str( 0, 1, table);
+ 338   4                          LCD1602_Dis_Str( 8, 1, "        ");     
+ 339   4                                        }
+ 340   3                        if(key_value==3)
+ 341   3                        {
+ 342   4                          ok_flag=1;
+ 343   4                        }
+ 344   3                                         if(key_count==8 && ok_flag==1) //按下确定键
+ 345   3                                        
+ 346   3                                        { 
+ 347   4                          ok_flag=0;
+ 348   4                                          for(i=0;i<8;i++)
+ 349   4                                           KEY_BUF[i]=table[i];
+ 350   4                          LCD1602_Dis_Str( 0, 1, "loading         ");  
+ 351   4                                              EEPROM_WRITE(7,KEY_BUF,8);//写入EEPROM
+ 352   4                          SYN_FrameInfo(2, "[v5][t5]密码更改成功");  
+ 353   4                          LCD1602_Dis_Str( 0, 1, "finish         ");
+ 354   4                          delay(1000);
+ 355   4                          LCD1602_Dis_Str( 0, 1, "               ");
+ 356   4                                         break;
+ 357   4                                         }
+ 358   3                        else ok_flag=0;
+ 359   3                      }                        
+ 360   2                                      
+ 361   2                             break ;
+ 362   2      
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 7   
+
+ 363   2                      default : break;
+ 364   2      
+ 365   2               }                      
+ 366   1      
+ 367   1              if( bPass )              //处理成功
+ 368   1              {
+ 369   2                      bPass = 0;
+ 370   2                      pass();
+ 371   2              LCD1602_Dis_Str( 0, 1, "                  ");        
+ 372   2              
+ 373   2              }
+ 374   1      
+ 375   1              if( bWarn )          //处理失败
+ 376   1              {
+ 377   2                      bWarn = 0;
+ 378   2                      warn();
+ 379   2              LCD1602_Dis_Str( 0, 1, "                  ");
+ 380   2              }
+ 381   1          if(dj_flag==1)
+ 382   1          {
+ 383   2      
+ 384   2              dj_flag=0;
+ 385   2              LCD1602_Dis_Str( 0, 1, "                  ");
+ 386   2              duoji_openDoor();
+ 387   2              SYN_FrameInfo(2, "[v5][t5]门已开");
+ 388   2              LCD1602_Dis_Str( 0, 1, "opening door");
+ 389   2      //        duoji_start(15);
+ 390   2      //        duoji_on();
+ 391   2      //        delay1s();
+ 392   2      //        duoji_off();
+ 393   2              delay(200);
+ 394   2              LCD1602_Dis_Str( 0, 1, "finish        ");
+ 395   2              delay(200);
+ 396   2      
+ 397   2              LCD1602_Dis_Str( 0, 1, "                  ");
+ 398   2          }
+ 399   1          
+ 400   1      }
+ 401          
+ 402          
+ 403          void main()
+ 404          {
+ 405   1          INT8U key;
+ 406   1          
+ 407   1         
+ 408   1         
+ 409   1          Delay_ms(50); //让硬件稳定
+ 410   1              init_all();        //执行初始化函数
+ 411   1          //duoji_Init();
+ 412   1          //duoji_openDoor();
+ 413   1              beep();    //beep test  
+ 414   1          LCD1602_Dis_Str( 0, 0, "welcome mimasuo" );  //显示初始化
+ 415   1          delay(1000);
+ 416   1          LCD1602_Clear_Screen();
+ 417   1      
+ 418   1          delay(100);
+ 419   1          while(1)
+ 420   1          {
+ 421   2              key=key_scan(); //按键操作
+ 422   2                 if(key==12)  if(states>0) states--;
+ 423   2                              else states=0;  //上一功能
+ 424   2                 
+C51 COMPILER V9.54   MIMASUO                                                               12/08/2021 14:10:26 PAGE 8   
+
+ 425   2                 if(key==14) if(++states>3) states=3; //下一功能
+ 426   2                 ctrl_process(); //进入RC522操作
+ 427   2      
+ 428   2              
+ 429   2          }
+ 430   1      }
+ 431              
+ 432                  
+ 433          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1985    ----
+   CONSTANT SIZE    =    490    ----
+   XDATA SIZE       =     30      29
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

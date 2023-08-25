@@ -1,0 +1,12 @@
+"..\out\STARTUP.obj",
+"..\out\delay.obj",
+"..\out\LCD1602.obj",
+"..\out\mimasuo.obj",
+"..\out\RFID.obj",
+"..\out\SPI.obj",
+"..\out\main.obj",
+"..\out\AT24C02PZ.obj",
+"..\out\duoji.obj",
+"..\out\SYN6288.obj" 
+TO "..\out\mimasuo" 
+PRINT(".\mimasuo.m51") RAMSIZE(256) 

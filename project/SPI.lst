@@ -1,0 +1,73 @@
+C51 COMPILER V9.54   SPI                                                                   12/08/2021 14:10:26 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE SPI
+OBJECT MODULE PLACED IN ..\out\SPI.obj
+COMPILER INVOKED BY: D:\arm\mdk5\C51\BIN\C51.EXE ..\source\SPI.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT
+                    -(.\SPI.lst) OBJECT(..\out\SPI.obj)
+
+line level    source
+
+   1          #include"config.h"
+   2          #include"SPI.h"
+   3          #include"delay.h"
+   4          
+   5          
+   6          unsigned char SPIReadByte(void)
+   7          {
+   8   1              unsigned char SPICount;                                       // Counter used to clock out the data
+   9   1              unsigned char SPIData; 
+  10   1                               
+  11   1              SPIData = 0;
+  12   1              for (SPICount = 0; SPICount < 8; SPICount++)                  // Prepare to clock in the data to be read
+  13   1              {
+  14   2                      SPIData <<=1;                                               // Rotate the data
+  15   2                      CLR_SPI_CK; //nop();//nop();                                         // Raise the clock to clock the dat
+             -a out of the MAX7456
+  16   2                      if(STU_SPI_MISO)
+  17   2                      {
+  18   3                              SPIData|=0x01;
+  19   3                      }
+  20   2                      SET_SPI_CK;   //nop();//nop();                                               // Drop the clock ready for
+             - the next bit
+  21   2              }                                                             // and loop back
+  22   1              return (SPIData);                              // Finally return the read data
+  23   1      } 
+  24          //------------------------------------------
+  25          // Ð´SPIÊý¾Ý 
+  26          //------------------------------------------
+  27          void SPIWriteByte(unsigned char SPIData)
+  28          {
+  29   1              unsigned char SPICount;                                       // Counter used to clock out the data
+  30   1              for (SPICount = 0; SPICount < 8; SPICount++)
+  31   1              {
+  32   2                      if (SPIData & 0x80)
+  33   2                      {
+  34   3                              SET_SPI_MOSI;
+  35   3                      }
+  36   2                      else
+  37   2                      {
+  38   3                              CLR_SPI_MOSI;
+  39   3                      } 
+  40   2                      nop();nop();
+  41   2                      CLR_SPI_CK;nop();nop();
+  42   2                      SET_SPI_CK;nop();nop();
+  43   2                      SPIData <<= 1;
+  44   2              }               
+  45   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     84    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----       2
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   SPI                                                                   12/08/2021 14:10:26 PAGE 2   
+
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

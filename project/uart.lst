@@ -1,0 +1,113 @@
+C51 COMPILER V9.00   UART                                                                  10/18/2021 23:44:05 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN .\uart.obj
+COMPILER INVOKED BY: D:\51keil4\C51\BIN\C51.EXE ..\source\uart.c BROWSE DEBUG OBJECTEXTEND PRINT(.\uart.lst) OBJECT(.\ua
+                    -rt.obj)
+
+line level    source
+
+   1          #include "reg52.h"
+   2          //#include "main.h"
+   3          #include "uart.h"
+   4          //#include "timer.h"
+   5          #include"config.h"
+   6          
+   7          u8 data UartBuf[UART_MAX_LEN] = { 0 };
+   8          u8 UartCount = 0, UartLen = 0, UartStart = FALSE, UartComp = FALSE;
+*** ERROR C202 IN LINE 8 OF ..\SOURCE\UART.C: 'FALSE': undefined identifier
+*** ERROR C202 IN LINE 8 OF ..\SOURCE\UART.C: 'FALSE': undefined identifier
+   9          
+  10          /**********************************************************************
+  11          functionName:putChar(BYTE sentData)
+  12          description:通过串口发送数据sentData
+  13          **********************************************************************/
+  14          void send_byte( INT8U SendData )
+*** ERROR C141 IN LINE 14 OF ..\SOURCE\UART.C: syntax error near 'SendData', expected ')'
+  15          {
+  16   1              ES = 0;
+  17   1              TI = 0;
+  18   1              SBUF = SendData;
+  19   1              while( TI == 0 );
+  20   1              TI = 0;
+  21   1              ES = 1;
+  22   1      }
+  23          
+  24          
+  25          void send_bytes( INT8U *Buf, INT8U Len )
+  26          {
+*** ERROR C236 IN LINE 26 OF ..\SOURCE\UART.C: '_send_bytes': different length of parameter lists
+  27   1              while( Len-- )
+*** ERROR C202 IN LINE 27 OF ..\SOURCE\UART.C: 'Len': undefined identifier
+  28   1              {
+  29   2                      send_byte( *Buf++ );    
+*** ERROR C202 IN LINE 29 OF ..\SOURCE\UART.C: 'Buf': undefined identifier
+  30   2              }
+  31   1      }
+  32          
+  33          
+  34          /**********************************************************************
+  35          串口发送格式：fe  cmdlen  datalen cxx cxx dxx dxx dxx ... check
+  36          **********************************************************************/
+  37          void uart_interrupt_receive(void) interrupt 4
+  38          {
+  39   1              INT8U ReByte;
+*** ERROR C202 IN LINE 39 OF ..\SOURCE\UART.C: 'INT8U': undefined identifier
+*** ERROR C141 IN LINE 39 OF ..\SOURCE\UART.C: syntax error near 'ReByte'
+  40   1              if( RI == 1 )
+  41   1              {
+  42   2                      RI = 0;
+  43   2                      UartWaitTime = 0;
+*** ERROR C202 IN LINE 43 OF ..\SOURCE\UART.C: 'UartWaitTime': undefined identifier
+  44   2                      ReByte = SBUF;
+*** ERROR C202 IN LINE 44 OF ..\SOURCE\UART.C: 'ReByte': undefined identifier
+C51 COMPILER V9.00   UART                                                                  10/18/2021 23:44:05 PAGE 2   
+
+  45   2      
+  46   2                      //send_byte( ReByte );
+  47   2                      
+  48   2                      if( ( UartStart == FALSE ) && ( ReByte == 0xFE ) ) //FE为起始码
+*** ERROR C202 IN LINE 48 OF ..\SOURCE\UART.C: 'FALSE': undefined identifier
+  49   2                      {
+  50   3                              UartStart = TRUE;
+*** ERROR C202 IN LINE 50 OF ..\SOURCE\UART.C: 'TRUE': undefined identifier
+  51   3                              UartCount = 0;
+  52   3                              UartLen = 255;
+  53   3                      }
+  54   2      
+  55   2                      else if( UartStart == TRUE )  //已经开始了接收数据
+*** ERROR C202 IN LINE 55 OF ..\SOURCE\UART.C: 'TRUE': undefined identifier
+  56   2                      {
+  57   3                              UartBuf[ UartCount++ ] = ReByte;
+*** ERROR C202 IN LINE 57 OF ..\SOURCE\UART.C: 'ReByte': undefined identifier
+  58   3                              if( UartCount == 2 )
+  59   3                              {
+  60   4                                      UartLen = UartBuf[0] + UartBuf[1] + 3;
+  61   4                              }
+  62   3                              else if( UartCount >= UartLen )
+  63   3                              {
+  64   4                                      UartComp = TRUE;
+*** ERROR C202 IN LINE 64 OF ..\SOURCE\UART.C: 'TRUE': undefined identifier
+  65   4                              }
+  66   3                              if( UartCount >= 45 )
+  67   3                              {
+  68   4                                      UartCount = 45;
+  69   4                              }
+  70   3                      }
+  71   2              }
+  72   1      }
+  73          
+  74          //UART0 initialize
+  75          // desired baud rate: 9600
+  76          // actual: baud rate:9600 (0.0%)
+  77          // char size: 8 bit
+  78          // parity: Disabled
+  79          
+  80          void init_uart(void)
+  81          {
+  82   1              SCON = 0x50;
+  83   1              ES=1;
+  84   1      }
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  15 ERROR(S)

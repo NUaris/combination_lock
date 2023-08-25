@@ -1,0 +1,11 @@
+"STARTUP.obj",
+".\AT24C02.obj",
+".\delay.obj",
+".\JR6001.obj",
+".\LCD1602.obj",
+".\mimasuo.obj",
+".\RFID.obj",
+".\SPI.obj",
+".\main.obj" 
+TO "mimasuo" 
+RAMSIZE(256) 

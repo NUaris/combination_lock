@@ -1,0 +1,168 @@
+C51 COMPILER V9.54   AT24C02                                                               11/29/2021 18:16:44 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE AT24C02
+OBJECT MODULE PLACED IN ..\output\AT24C02.obj
+COMPILER INVOKED BY: D:\arm\mdk5\C51\BIN\C51.EXE ..\source\AT24C02.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND P
+                    -RINT(.\AT24C02.lst) OBJECT(..\output\AT24C02.obj)
+
+line level    source
+
+   1          #include"AT24C02.h"
+   2          #include"config.h"
+   3          #include"delay.h"
+*** ERROR C231 IN LINE 10 OF ..\source\delay.h: 'beep': redefinition
+   4          
+   5          
+   6          void init();  //24c02初始化子程序
+   7          void start();        //启动I2C总线
+   8          void stop();         //停止I2C总线
+   9          void writebyte(unsigned char j);  //写一个字节
+  10          unsigned char readbyte();   //读一个字节
+  11          void clock();         //I2C总线时钟
+  12          ////////从24c02的地址address中读取一个字节数据/////
+  13          unsigned char read24c02(unsigned char address);
+  14          //////向24c02的address地址中写入一字节数据info/////
+  15          void write24c02(unsigned char address,unsigned char info);
+  16          
+  17          
+  18          
+  19          
+  20          void init()  //24c02初始化子程序
+  21          {
+  22   1              scl=1;
+*** ERROR C202 IN LINE 22 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  23   1              nop();
+  24   1              sda=1;
+*** ERROR C202 IN LINE 24 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  25   1              nop();
+  26   1      }
+  27          
+  28          void start()        //启动I2C总线
+  29          {
+  30   1              sda=1;
+*** ERROR C202 IN LINE 30 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  31   1              nop();
+  32   1              scl=1;
+*** ERROR C202 IN LINE 32 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  33   1              nop();
+  34   1              sda=0;
+*** ERROR C202 IN LINE 34 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  35   1              nop();
+  36   1              scl=0;
+*** ERROR C202 IN LINE 36 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  37   1              nop();
+  38   1      }
+  39          
+  40          void stop()         //停止I2C总线
+  41          {
+  42   1              sda=0;
+*** ERROR C202 IN LINE 42 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  43   1              nop();
+  44   1              scl=1;
+*** ERROR C202 IN LINE 44 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  45   1              nop();
+C51 COMPILER V9.54   AT24C02                                                               11/29/2021 18:16:44 PAGE 2   
+
+  46   1              sda=1;
+*** ERROR C202 IN LINE 46 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  47   1              nop();
+  48   1      }
+  49          
+  50          void writebyte(unsigned char j)  //写一个字节
+  51          {
+  52   1              unsigned char i,temp;
+  53   1              temp=j;
+  54   1              for (i=0;i<8;i++)
+  55   1         {
+  56   2                 temp=temp<<1;
+  57   2                 scl=0;
+*** ERROR C202 IN LINE 57 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  58   2                 nop();
+  59   2                 sda=CY;              //temp左移时，移出的值放入了CY中
+*** ERROR C202 IN LINE 59 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  60   2                 nop();
+  61   2                 scl=1;
+*** ERROR C202 IN LINE 61 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  62   2                 nop();
+  63   2         }
+  64   1         scl=0;
+*** ERROR C202 IN LINE 64 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  65   1         nop();
+  66   1         sda=1;
+*** ERROR C202 IN LINE 66 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  67   1         nop();
+  68   1      }
+  69          
+  70          unsigned char readbyte()   //读一个字节
+  71          {
+  72   1         unsigned char i,j,k=0;
+  73   1         scl=0; nop(); sda=1;
+*** ERROR C202 IN LINE 73 OF ..\source\AT24C02.c: 'scl': undefined identifier
+*** ERROR C202 IN LINE 73 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  74   1         for (i=0;i<8;i++)
+  75   1         {  
+  76   2                      nop(); scl=1; nop();
+*** ERROR C202 IN LINE 76 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  77   2              if(sda==1) 
+*** ERROR C202 IN LINE 77 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  78   2                      j=1;
+  79   2              else
+  80   2                      j=0;
+  81   2              k=(k<<1)|j;
+  82   2                      scl=0;
+*** ERROR C202 IN LINE 82 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  83   2              }
+  84   1              nop();
+  85   1              return(k);
+  86   1      }
+  87          
+  88          void clock()         //I2C总线时钟
+  89          {
+  90   1         unsigned char i=0;
+  91   1         scl=1;
+*** ERROR C202 IN LINE 91 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  92   1         nop();
+  93   1         while((sda==1)&&(i<255))
+*** ERROR C202 IN LINE 93 OF ..\source\AT24C02.c: 'sda': undefined identifier
+  94   1                i++;
+C51 COMPILER V9.54   AT24C02                                                               11/29/2021 18:16:44 PAGE 3   
+
+  95   1         scl=0;
+*** ERROR C202 IN LINE 95 OF ..\source\AT24C02.c: 'scl': undefined identifier
+  96   1         nop();
+  97   1      }
+  98          
+  99          ////////从24c02的地址address中读取一个字节数据/////
+ 100          unsigned char read24c02(unsigned char address)
+ 101          {
+ 102   1         unsigned char i;
+ 103   1         start();
+ 104   1         writebyte(0xa0);
+ 105   1         clock();
+ 106   1         writebyte(address);
+ 107   1         clock();
+ 108   1         start();
+ 109   1         writebyte(0xa1);
+ 110   1         clock();
+ 111   1         i=readbyte();
+ 112   1         stop();
+ 113   1         delay(100);
+ 114   1         return(i);
+ 115   1      }
+ 116          
+ 117          //////向24c02的address地址中写入一字节数据info/////
+ 118          void write24c02(unsigned char address,unsigned char info)
+ 119          {
+ 120   1         start();
+ 121   1         writebyte(0xa0);
+ 122   1         clock();
+ 123   1         writebyte(address);
+ 124   1         clock();
+ 125   1         writebyte(info);
+ 126   1         clock();
+ 127   1         stop();
+ 128   1         delay(5000); 
+ 129   1      }
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  23 ERROR(S)

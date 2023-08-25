@@ -1,0 +1,181 @@
+C51 COMPILER V9.54   AT24C02PZ                                                             12/08/2021 14:10:26 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE AT24C02PZ
+OBJECT MODULE PLACED IN ..\out\AT24C02PZ.obj
+COMPILER INVOKED BY: D:\arm\mdk5\C51\BIN\C51.EXE ..\source\AT24C02PZ.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND
+                    - PRINT(.\AT24C02PZ.lst) OBJECT(..\out\AT24C02PZ.obj)
+
+line level    source
+
+   1          #include"AT24C02PZ.h"
+   2          #include<reg52.h>
+   3          #include"config.h"
+   4          #include"delay.h"
+   5            /*********************IIC.h*************************************/
+   6          //--¶¨ÒåÊ¹ÓÃµÄIO¿Ú--//
+   7          //sbit I2C_SCL = P3^3;
+   8          //sbit I2C_SDA = P3^4;
+   9          //--ÉùÃ÷È«¾Ö±äÁ¿--//
+  10          void I2C_Delay10us();
+  11          void I2C_Start();           //ÆðÊ¼ÐÅºÅ£ºÔÚI2C_SCLÊ±ÖÓÐÅºÅÔÚ¸ßµçÆ½ÆÚ¼äI2C_SDAÐÅºÅ²úÉúÒ»¸öÏÂ½µÑØ
+  12          void I2C_Stop();            //ÖÕÖ¹ÐÅºÅ£ºÔÚI2C_SCLÊ±ÖÓÐÅºÅ¸ßµçÆ½ÆÚ¼äI2C_SDAÐÅºÅ²úÉúÒ»¸öÉÏÉýÑØ
+  13          uchar I2C_SendByte(uchar dat, uchar ack);//Ê¹ÓÃI2c¶ÁÈ¡Ò»¸ö×Ö½Ú
+  14          uchar I2C_ReadByte();       //Í¨¹ýI2C·¢ËÍÒ»¸ö×Ö½Ú¡£ÔÚI2C_SCLÊ±ÖÓÐÅºÅ¸ßµçÆ½ÆÚ¼ä£¬±£³Ö·¢ËÍÐÅºÅI2C_SDA±£³ÖÎÈ¶
+             -¨
+  15          void At24c02Write(unsigned char addr,unsigned char dat);
+  16          unsigned char At24c02Read(unsigned char addr);
+  17          /*********************IIC.c*************************************/
+  18          
+  19          //ÑÓÊ±:1us
+  20          void I2C_Delay10us()
+  21          {
+  22   1              uchar a, b;
+  23   1              for(b=1; b>0; b--)
+  24   1              {
+  25   2                      for(a=2; a>0; a--);
+  26   2              }
+  27   1      }
+  28          
+  29          // ÆðÊ¼ÐÅºÅ£ºÔÚI2C_SCLÊ±ÖÓÐÅºÅÔÚ¸ßµçÆ½ÆÚ¼äI2C_SDAÐÅºÅ²úÉúÒ»¸öÏÂ½µÑØ
+  30          void I2C_Start()
+  31          {
+  32   1              I2C_SDA = 1;
+  33   1              I2C_Delay10us();
+  34   1              I2C_SCL = 1;
+  35   1              I2C_Delay10us();//½¨Á¢Ê±¼äÊÇI2C_SDA±£³ÖÊ±¼ä>4.7us
+  36   1              I2C_SDA = 0;
+  37   1              I2C_Delay10us();//±£³ÖÊ±¼äÊÇ>4us
+  38   1              I2C_SCL = 0;                    
+  39   1              I2C_Delay10us();                
+  40   1      }
+  41          
+  42          //ÖÕÖ¹ÐÅºÅ£ºÔÚI2C_SCLÊ±ÖÓÐÅºÅ¸ßµçÆ½ÆÚ¼äI2C_SDAÐÅºÅ²úÉúÒ»¸öÉÏÉýÑØ
+  43          void I2C_Stop()
+  44          {
+  45   1              I2C_SDA = 0;
+  46   1              I2C_Delay10us();
+  47   1              I2C_SCL = 1;
+  48   1              I2C_Delay10us();//½¨Á¢Ê±¼ä´óÓÚ4.7us
+  49   1              I2C_SDA = 1;
+  50   1              I2C_Delay10us();                
+  51   1      }
+  52          
+  53          //Í¨¹ýI2C·¢ËÍÒ»¸ö×Ö½Ú¡£ÔÚI2C_SCLÊ±ÖÓÐÅºÅ¸ßµçÆ½ÆÚ¼ä£¬ ±£³Ö·¢ËÍÐÅºÅI2C_SDA±£³ÖÎÈ¶¨
+C51 COMPILER V9.54   AT24C02PZ                                                             12/08/2021 14:10:26 PAGE 2   
+
+  54          uchar I2C_SendByte(uchar dat, uchar ack)
+  55          {
+  56   1              uchar a = 0,b = 0;//×î´ó255£¬Ò»¸ö»úÆ÷ÖÜÆÚÎª1us£¬×î´óÑÓÊ±255us¡£                 
+  57   1              for(a=0; a<8; a++)//Òª·¢ËÍ8Î»£¬´Ó×î¸ßÎ»¿ªÊ¼
+  58   1              {
+  59   2                      I2C_SDA = dat >> 7;      //ÆðÊ¼ÐÅºÅÖ®ºóI2C_SCL=0£¬ËùÒÔ¿ÉÒÔÖ±½Ó¸Ä±äI2C_SDAÐÅºÅ
+  60   2                      dat = dat << 1;
+  61   2                      I2C_Delay10us();
+  62   2                      I2C_SCL = 1;
+  63   2                      I2C_Delay10us();//½¨Á¢Ê±¼ä>4.7us
+  64   2                      I2C_SCL = 0;
+  65   2                      I2C_Delay10us();//Ê±¼ä´óÓÚ4us           
+  66   2              }
+  67   1              I2C_SDA = 1;
+  68   1              I2C_Delay10us();
+  69   1              I2C_SCL = 1;
+  70   1              while(I2C_SDA && (ack == 1))//µÈ´ýÓ¦´ð£¬Ò²¾ÍÊÇµÈ´ý´ÓÉè±¸°ÑI2C_SDAÀ­µÍ
+  71   1              {
+  72   2                      b++;
+  73   2                      if(b > 200)      //Èç¹û³¬¹ý200usÃ»ÓÐÓ¦´ð·¢ËÍÊ§°Ü£¬»òÕßÎª·ÇÓ¦´ð£¬±íÊ¾½ÓÊÕ½áÊø
+  74   2                      {
+  75   3                              I2C_SCL = 0;
+  76   3                              I2C_Delay10us();
+  77   3                              return 0;
+  78   3                      }
+  79   2              }
+  80   1              I2C_SCL = 0;
+  81   1              I2C_Delay10us();
+  82   1              return 1;               
+  83   1      }
+  84          
+  85          // Ê¹ÓÃI2c¶ÁÈ¡Ò»¸ö×Ö½Ú
+  86          uchar I2C_ReadByte()
+  87          {
+  88   1              uchar a = 0,dat = 0;
+  89   1              I2C_SDA = 1;                    //ÆðÊ¼ºÍ·¢ËÍÒ»¸ö×Ö½ÚÖ®ºóI2C_SCL¶¼ÊÇ0
+  90   1              I2C_Delay10us();
+  91   1              for(a=0; a<8; a++)//½ÓÊÕ8¸ö×Ö½Ú
+  92   1              {
+  93   2                      I2C_SCL = 1;
+  94   2                      I2C_Delay10us();
+  95   2                      dat <<= 1;
+  96   2                      dat |= I2C_SDA;
+  97   2                      I2C_Delay10us();
+  98   2                      I2C_SCL = 0;
+  99   2                      I2C_Delay10us();
+ 100   2              }
+ 101   1              return dat;             
+ 102   1      }
+ 103          //º¯Êý¹¦ÄÜ                 : Íù24c02µÄÒ»¸öµØÖ·Ð´ÈëÒ»¸öÊý¾Ý
+ 104          
+ 105          void At24c02Write(unsigned char addr,unsigned char dat)
+ 106          {
+ 107   1              I2C_Start();
+ 108   1              I2C_SendByte(0xa0, 1);//·¢ËÍÐ´Æ÷¼þµØÖ·
+ 109   1              I2C_SendByte(addr, 1);//·¢ËÍÒªÐ´ÈëÄÚ´æµØÖ·
+ 110   1              I2C_SendByte(dat, 0);   //·¢ËÍÊý¾Ý
+ 111   1              I2C_Stop();
+ 112   1      }
+ 113          // ¶ÁÈ¡24c02µÄÒ»¸öµØÖ·µÄÒ»¸öÊý¾Ý
+ 114          
+ 115          unsigned char At24c02Read(unsigned char addr)
+C51 COMPILER V9.54   AT24C02PZ                                                             12/08/2021 14:10:26 PAGE 3   
+
+ 116          {
+ 117   1              unsigned char num;
+ 118   1              I2C_Start();
+ 119   1              I2C_SendByte(0xa0, 1); //·¢ËÍÐ´Æ÷¼þµØÖ·
+ 120   1              I2C_SendByte(addr, 1); //·¢ËÍÒª¶ÁÈ¡µÄµØÖ·
+ 121   1              I2C_Start();
+ 122   1              I2C_SendByte(0xa1, 1); //·¢ËÍ¶ÁÆ÷¼þµØÖ·
+ 123   1              num=I2C_ReadByte(); //¶ÁÈ¡Êý¾Ý
+ 124   1              I2C_Stop();
+ 125   1              return num;     
+ 126   1      }
+ 127          
+ 128          void EEPROM_READ(unsigned char addr_start,unsigned char * dat,unsigned char addr_len)//¶ÁÈ¡Ò»´®Êý¾Ý£¬addr_
+             -startÎªÆðÊ¼µØÖ·£¬dataÎªÐ´ÈëµÄÊý¾Ý£¬addr_lenÎªÊý¾Ý³¤¶È
+ 129          {
+ 130   1          unsigned char a;
+ 131   1          
+ 132   1          for(a=addr_start;a<addr_start+addr_len;a++)
+ 133   1          {
+ 134   2              *dat=At24c02Read(a);
+ 135   2              dat++;
+ 136   2              delay(20);
+ 137   2          }
+ 138   1      }
+ 139          
+ 140          void EEPROM_WRITE(unsigned char addr_start,unsigned char * dat,unsigned char addr_len)//Ð´ÈëÒ»´®Êý¾Ý£¬addr
+             -_startÎªÆðÊ¼µØÖ·£¬dataÎªÐ´ÈëµÄÊý¾Ý£¬addr_lenÎªÊý¾Ý³¤¶È
+ 141          {
+ 142   1          unsigned char a;
+ 143   1          
+ 144   1          for(a=addr_start;a<addr_start+addr_len;a++)
+ 145   1          {
+ 146   2              At24c02Write(a,*dat);
+ 147   2              dat++;
+ 148   2              delay(20);
+ 149   2          }
+ 150   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    405    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      13
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
